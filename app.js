@@ -1,5 +1,3 @@
-"use strict";
-
 const TOKEN_INPUT = document.getElementById("token");
 const ANALYZE_BTN = document.getElementById("analyzeBtn");
 const LOADED_COUNT = document.getElementById("loadedCount");
