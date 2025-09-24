@@ -1,77 +1,60 @@
+"use strict";
+
+const TOKEN_INPUT = document.getElementById("token");
+const ANALYZE_BTN = document.getElementById("analyzeBtn");
+const LOADED_COUNT = document.getElementById("loadedCount");
+const REVIEW_TEXT = document.getElementById("reviewText");
+const SENTIMENT_ICON = document.getElementById("sentimentIcon");
+const SENTIMENT_LABEL = document.getElementById("sentimentLabel");
+const SENTIMENT_SCORE = document.getElementById("sentimentScore");
+const STATUS = document.getElementById("status");
+
+const HF_URL = "https://api-inference.huggingface.co/models/siebert/sentiment-roberta-large-english";
+
 let reviews = [];
+let isLoading = false;
 
-async function loadReviews() {
-    try {
-        const response = await fetch('reviews_test.tsv');
-        const tsvData = await response.text();
-        Papa.parse(tsvData, {
-            header: true,
-            delimiter: '\t',
-            complete: function(results) {
-                reviews = results.data.map(row => row.text).filter(text => text);
-            }
-        });
-    } catch (error) {
-        console.error('Error loading reviews:', error);
-    }
+function setStatus(message, kind = "info") {
+  STATUS.className = "status";
+  if (kind === "error") STATUS.classList.add("error");
+  else if (kind === "ok") STATUS.classList.add("ok");
+  else if (kind === "warn") STATUS.classList.add("warn");
+  STATUS.innerHTML = "";
+  const icon = document.createElement("i");
+  icon.className =
+    kind === "error" ? "fa-solid fa-triangle-exclamation" :
+    kind === "ok" ? "fa-regular fa-circle-check" :
+    kind === "warn" ? "fa-regular fa-circle-question" :
+    "fa-regular fa-circle-question";
+  const span = document.createElement("span");
+  span.textContent = message;
+  STATUS.append(icon, span);
 }
 
-async function analyzeRandomReview() {
-    const token = document.getElementById('token').value.trim();
-    const reviewElement = document.getElementById('review');
-    const iconElement = document.getElementById('icon');
-    
-    if (reviews.length === 0) {
-        reviewElement.textContent = 'Loading reviews...';
-        await loadReviews();
-        if (reviews.length === 0) {
-            reviewElement.textContent = 'No reviews available';
-            return;
-        }
-    }
-
-    const randomReview = reviews[Math.floor(Math.random() * reviews.length)];
-    reviewElement.textContent = randomReview;
-    iconElement.innerHTML = '';
-    iconElement.className = '';
-
-    try {
-        const response = await fetch(
-            'https://api-inference.huggingface.co/models/siebert/sentiment-roberta-large-english',
-            {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...(token && { 'Authorization': `Bearer ${token}` })
-                },
-                body: JSON.stringify({ inputs: randomReview })
-            }
-        );
-
-        if (!response.ok) {
-            throw new Error(`API error: ${response.status}`);
-        }
-
-        const data = await response.json();
-        const sentiment = data[0][0];
-        
-        let iconClass = 'neutral';
-        let iconCode = 'fa-question';
-
-        if (sentiment.label === 'POSITIVE' && sentiment.score > 0.5) {
-            iconClass = 'positive';
-            iconCode = 'fa-thumbs-up';
-        } else if (sentiment.label === 'NEGATIVE' && sentiment.score > 0.5) {
-            iconClass = 'negative';
-            iconCode = 'fa-thumbs-down';
-        }
-
-        iconElement.className = iconClass;
-        iconElement.innerHTML = `<i class="fas ${iconCode}"></i>`;
-    } catch (error) {
-        console.error('Analysis error:', error);
-        iconElement.innerHTML = '<span style="color: red;">Analysis failed</span>';
-    }
+function sanitizeText(s) {
+  if (typeof s !== "string") return "";
+  return s.replace(/[\u0000-\u001F\u007F]/g, "").trim();
 }
 
-document.addEventListener('DOMContentLoaded', loadReviews);
+function updateCount() {
+  if (reviews.length > 0) {
+    LOADED_COUNT.innerHTML = `<span class="count">${reviews.length}</span> reviews loaded`;
+  } else {
+    LOADED_COUNT.textContent = "No reviews loaded";
+  }
+}
+
+async function loadTSV() {
+  try {
+    isLoading = true;
+    setStatus("Loading TSV…");
+    const resp = await fetch("reviews_test.tsv", { cache: "no-store" });
+    if (!resp.ok) {
+      throw new Error(`Failed to load TSV (${resp.status})`);
+    }
+    const text = await resp.text();
+    Papa.parse(text, {
+      header: true,
+      delimiter: "\t",
+      skipEmptyLines: true,
+      complete: (results
