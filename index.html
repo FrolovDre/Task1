@@ -1,52 +1,201 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sentiment Analysis</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-            text-align: center;
-        }
-        .input-group {
-            margin: 20px 0;
-        }
-        input, button {
-            padding: 10px;
-            margin: 5px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-        }
-        #review {
-            background-color: #f9f9f9;
-            padding: 20px;
-            margin: 20px 0;
-            border-radius: 8px;
-            min-height: 20px;
-        }
-        #icon {
-            font-size: 48px;
-            margin: 20px;
-        }
-        .positive { color: green; }
-        .negative { color: red; }
-        .neutral { color: gray; }
-    </style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>TSV Review Sentiment • Hugging Face</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #111827;
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --accent: #22d3ee;
+      --danger: #f87171;
+      --ok: #34d399;
+      --warn: #fbbf24;
+      --btn: #2563eb;
+      --btn-hover: #1d4ed8;
+      --input: #1f2937;
+      --border: #374151;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      background: radial-gradient(1200px 800px at 100% 0%, #0b1020 0%, var(--bg) 60%);
+      color: var(--text);
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+    .app {
+      width: 100%;
+      max-width: 900px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.04);
+      backdrop-filter: blur(6px);
+    }
+    header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    header .logo {
+      height: 44px; width: 44px; display: grid; place-items: center;
+      border-radius: 10px; background: #111827; border: 1px solid var(--border);
+    }
+    header h1 {
+      margin: 0;
+      font-size: 20px;
+      line-height: 1.2;
+      letter-spacing: 0.2px;
+    }
+    header p { margin: 2px 0 0; color: var(--muted); font-size: 13px; }
+    .row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+      margin: 14px 0 6px;
+    }
+    label {
+      display: block;
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    input[type="password"] {
+      width: 100%;
+      background: var(--input);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      padding: 12px 12px;
+      outline: none;
+    }
+    input[type="password"]::placeholder { color: #6b7280; }
+    button {
+      padding: 12px 16px;
+      background: var(--btn);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button:hover { background: var(--btn-hover); }
+    button:disabled { opacity: .6; cursor: not-allowed; }
+    .meta {
+      display: flex; gap: 12px; align-items: center; margin: 4px 0 16px;
+      font-size: 12px; color: var(--muted);
+    }
+    .chip {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 10px; border-radius: 999px; border: 1px solid var(--border);
+      background: #0b1224; color: var(--muted);
+    }
+    .panel {
+      display: grid; gap: 14px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px;
+    }
+    .review {
+      padding: 16px;
+      background: #0b1224;
+      border-radius: 12px;
+      border: 1px dashed #2b354b;
+      min-height: 80px;
+      line-height: 1.4;
+      font-size: 15px;
+      word-wrap: break-word;
+      white-space: pre-wrap;
+    }
+    .result {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 14px;
+      background: #0b1224;
+      border-radius: 12px;
+      border: 1px solid #26314b;
+    }
+    .result i { font-size: 28px; }
+    .result .label { font-weight: 700; }
+    .status {
+      margin-top: 10px; font-size: 13px;
+      display: flex; align-items: center; gap: 8px; color: var(--muted);
+    }
+    .status.error { color: var(--danger); }
+    .status.ok { color: var(--ok); }
+    .status.warn { color: var(--warn); }
+    footer {
+      margin-top: 18px; font-size: 12px; color: var(--muted);
+      display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+    }
+    .kbd {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      background: #0c1226; border: 1px solid var(--border); padding: 2px 6px; border-radius: 6px;
+      color: var(--text);
+    }
+    .count { color: var(--accent); font-weight: 700; }
+  </style>
 </head>
 <body>
-    <h1>Sentiment Analysis</h1>
-    <div class="input-group">
-        <input type="text" id="token" placeholder="Hugging Face API Token (optional)">
-        <button onclick="analyzeRandomReview()">Analyze Random Review</button>
+  <div class="app">
+    <header>
+      <div class="logo"><i class="fa-solid fa-robot"></i></div>
+      <div>
+        <h1>Random TSV Review Sentiment</h1>
+        <p>Parses <span class="kbd">reviews_test.tsv</span> with Papa Parse and analyzes via Hugging&nbsp;Face Inference API.</p>
+      </div>
+    </header>
+
+    <div>
+      <label for="token">Hugging Face API token (optional)</label>
+      <div class="row">
+        <input id="token" type="password" placeholder="hf_****************************" autocomplete="off" />
+        <button id="analyzeBtn" disabled>
+          <i class="fa-solid fa-wand-magic-sparkles"></i>&nbsp;&nbsp;Analyze Random Review
+        </button>
+      </div>
+      <div class="meta">
+        <span class="chip"><i class="fa-solid fa-database"></i> <span id="loadedCount">Loading TSV…</span></span>
+        <span class="chip"><i class="fa-brands fa-hugging-face"></i> siebert/sentiment-roberta-large-english</span>
+        <span class="chip"><i class="fa-solid fa-file-csv"></i> TSV with <span class="kbd">text</span> column</span>
+      </div>
     </div>
-    <div id="review"></div>
-    <div id="icon"></div>
-    <script src="app.js"></script>
+
+    <div class="panel">
+      <div>
+        <label>Random review</label>
+        <div id="reviewText" class="review"></div>
+      </div>
+      <div>
+        <label>Sentiment</label>
+        <div class="result">
+          <i id="sentimentIcon" class="fa-regular fa-circle-question"></i>
+          <div>
+            <div id="sentimentLabel" class="label">Waiting…</div>
+            <div id="sentimentScore" class="muted" style="font-size:12px;color:#9ca3af;"></div>
+          </div>
+        </div>
+      </div>
+      <div id="status" class="status"><i class="fa-regular fa-circle-question"></i><span>Ready</span></div>
+    </div>
+
+    <footer>
+      <div>Tip: provide a token to raise rate limits.</div>
+      <div>Keyboard: press <span class="kbd">Enter</span> to analyze again.</div>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
 </body>
 </html>
